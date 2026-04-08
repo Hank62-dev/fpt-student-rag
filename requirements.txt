@@ -1,0 +1,8 @@
+llama-index==0.12.*
+llama-index-embeddings-huggingface
+llama-index-llms-openai
+langgraph
+streamlit
+python-dotenv
+pypdf
+sentence-transformersz
