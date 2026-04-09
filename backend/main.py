@@ -2,14 +2,26 @@ import os
 import time
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
+
+# Import từ cùng thư mục backend
 from agent import ask_question
 
 load_dotenv()
 
-app = FastAPI(title="FPT Student RAG API", version="1.0.0")
+app = FastAPI(title="FPT Student Assistant", version="1.0.0")
 
+# Serve frontend từ thư mục frontend/
+app.mount("/static", StaticFiles(directory="../frontend"), name="static")
+
+@app.get("/")
+async def serve_frontend():
+    return FileResponse("../frontend/index.html")
+
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -32,12 +44,12 @@ class AnswerResponse(BaseModel):
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "message": "FPT Student Assistant is running"}
 
 @app.post("/ask", response_model=AnswerResponse)
 def ask(req: QuestionRequest):
     if not req.question.strip():
-        raise HTTPException(status_code=400, detail="Question cannot be empty")
+        raise HTTPException(status_code=400, detail="Câu hỏi không được để trống")
 
     start = time.time()
     response = ask_question(req.question)
@@ -53,7 +65,7 @@ def ask(req: QuestionRequest):
     sources = []
     for node in source_nodes[:5]:
         file_name = node.metadata.get("file_name", "Tài liệu FAP")
-        score = round(node.score, 3) if hasattr(node, "score") and node.score else "N/A"
+        score = round(node.score, 3) if hasattr(node, "score") and node.score is not None else "N/A"
         sources.append(SourceNode(file_name=file_name, score=score))
 
     return AnswerResponse(answer=answer_text, sources=sources, elapsed=elapsed)
