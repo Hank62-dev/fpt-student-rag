@@ -1,0 +1,8 @@
+fastapi==0.115.*
+uvicorn[standard]==0.32.*
+llama-index==0.12.*
+llama-index-embeddings-huggingface
+llama-index-llms-google-genai
+sentence-transformers
+pypdf
+python-dotenv
