@@ -1,4 +1,3 @@
-# backend/agent.py
 import os
 import time
 from dotenv import load_dotenv
@@ -10,10 +9,10 @@ from llama_index.core.prompts import PromptTemplate
 
 load_dotenv()
 
-# ================== EMBEDDING ==================
+#  EMBEDDING 
 Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-m3")
 
-# ================== LLM + RETRY ==================
+#  LLM + RETRY 
 class RetryGoogleGenAI(GoogleGenAI):
     """Gemini với auto-retry khi bị rate limit 429"""
 
@@ -25,11 +24,11 @@ class RetryGoogleGenAI(GoogleGenAI):
             except Exception as e:
                 err = str(e).lower()
                 if "429" in err or "rate" in err or "quota" in err:
-                    print(f"⚠️  Rate limit hit, thử lại sau {delay}s... (lần {i+1}/3)")
+                    print(f" Rate limit hit, thử lại sau {delay}s... (lần {i+1}/3)")
                     time.sleep(delay)
                 else:
                     raise
-        raise Exception("❌ Vẫn bị rate limit sau 3 lần retry. Vui lòng thử lại sau.")
+        raise Exception("Vẫn bị rate limit sau 3 lần retry. Vui lòng thử lại sau.")
 
     def complete(self, prompt, **kwargs):
         return self._retry(super().complete, prompt, **kwargs)
@@ -53,11 +52,10 @@ Settings.llm = Groq(
     max_tokens=1024,
 )
 
-# ================== LOAD INDEX ==================
+#  LOAD INDEX 
 storage_context = StorageContext.from_defaults(persist_dir="indexes")
 index = load_index_from_storage(storage_context)
 
-# ================== PROMPT ==================
 SYSTEM_PROMPT = PromptTemplate(
     "Bạn là trợ lý thông minh chuyên hỗ trợ sinh viên Đại học FPT.\n"
     "Chỉ sử dụng thông tin từ tài liệu được cung cấp bên dưới để trả lời.\n"
@@ -69,7 +67,7 @@ SYSTEM_PROMPT = PromptTemplate(
     "Trả lời:"
 )
 
-# ================== QUERY ENGINE ==================
+#  QUERY ENGINE 
 query_engine = index.as_query_engine(
     similarity_top_k=6,
     response_mode="tree_summarize",

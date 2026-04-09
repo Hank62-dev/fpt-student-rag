@@ -1,4 +1,3 @@
-# backend/main.py
 import os
 import time
 from fastapi import FastAPI, HTTPException
