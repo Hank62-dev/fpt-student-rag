@@ -48,7 +48,7 @@ from llama_index.llms.groq import Groq
 Settings.llm = Groq(
     model="llama-3.1-8b-instant",
     api_key=os.getenv("GROQ_API_KEY"),
-    temperature=0.3,
+    temperature=0.05,
     max_tokens=1024,
 )
 
