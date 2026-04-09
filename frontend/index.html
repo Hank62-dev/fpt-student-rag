@@ -423,7 +423,7 @@
 
 </div>
 <script>
-  const API_BASE = "http://localhost:8000";
+  const API_BASE = "https://fpt-student-rag.vercel.app/";
 
   const messagesEl = document.getElementById("messages");
   const inputEl    = document.getElementById("input");
@@ -550,7 +550,7 @@
       }
     } catch (err) {
       removeTyping();
-      appendMessage("bot", `<span class="error-text">Không kết nối được backend. Kiểm tra <code>http://localhost:8000</code>.</span>`);
+      appendMessage("bot", `<span class="error-text">Không kết nối được backend. Kiểm tra <code>https://fpt-student-rag.vercel.app/</code>.</span>`);
     }
 
     sendBtn.disabled = false;
