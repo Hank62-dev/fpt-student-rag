@@ -14,7 +14,7 @@ from llama_index.core.prompts import PromptTemplate
 load_dotenv()
 
 # ── Embedding ──────────────────────────────────────────────────
-Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-m3")
+Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-small-en-v1.5")
 
 # ── LLM ───────────────────────────────────────────────────────
 Settings.llm = Groq(
