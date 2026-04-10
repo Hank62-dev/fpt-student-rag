@@ -4,8 +4,8 @@ llama-index==0.12.*
 llama-index-embeddings-huggingface
 llama-index-llms-groq
 groq
-sentence-transformers
 pypdf
 python-dotenv
 docx2txt
 openpyxl
+sentence-transformers
