@@ -307,12 +307,12 @@
 
 </div>
 <script>
-  // ── Config ──────────────────────────────────────────────────
+  // ── Config 
   const API_BASE = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
     ? "http://localhost:8000"
-    : "fpt-student-rag-production.up.railway.app";
+    : "https://fpt-student-rag-production.up.railway.app/";
 
-  // ── Session ─────────────────────────────────────────────────
+  // ── Session 
   let sessionId = localStorage.getItem("fpt_session_id") || null;
 
   const messagesEl = document.getElementById("messages");
