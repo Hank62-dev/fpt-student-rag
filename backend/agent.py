@@ -91,12 +91,11 @@ def set_cache(question: str, answer: str, sources: list):
     _save_cache()
 
 # ── FAQ ───────────────────────────────────────────────────────
-FAQ_MAP = {
-    "học phí": "Học phí FPT University được tính theo tín chỉ. Sinh viên có thể xem chi tiết và đóng học phí trực tiếp trên FAP tại mục Student Services > Tuition Fee.",
-    "lịch thi": "Lịch thi được đăng trên FAP tại mục Examination. Sinh viên cần kiểm tra phòng thi, ca thi trước ít nhất 1 tuần.",
-    "điểm danh": "Quy chế điểm danh FPT: nghỉ quá 20% buổi học bị cấm thi. Sinh viên cần xin phép trước khi nghỉ.",
-    "đăng ký môn": "Đăng ký môn học trên FAP tại mục Registration trong thời gian mở đăng ký. Sinh viên cần đảm bảo đủ điều kiện tiên quyết.",
-}
+# FAQ_MAP = {
+#     "lịch thi": "Lịch thi được đăng trên FAP tại mục Examination. Sinh viên cần kiểm tra phòng thi, ca thi trước ít nhất 1 tuần.",
+#     "điểm danh": "Quy chế điểm danh FPT: nghỉ quá 20% buổi học bị cấm thi. Sinh viên cần xin phép trước khi nghỉ.",
+#     "đăng ký môn": "Đăng ký môn học trên FAP tại mục Registration trong thời gian mở đăng ký. Sinh viên cần đảm bảo đủ điều kiện tiên quyết.",
+# }
 
 def check_faq(question: str):
     q_lower = question.lower()
