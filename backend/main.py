@@ -12,7 +12,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, field_validator
 from dotenv import load_dotenv
 from collections import defaultdict
-
+from fastapi import FastAPI, HTTPException, Request, Depends, UploadFile, File, BackgroundTasks
 from agent import (
     query_engine,
     get_cached, set_cache,
@@ -87,28 +87,31 @@ DATA_DIR = Path("data")
 DATA_DIR.mkdir(exist_ok=True)
 
 @app.post("/upload")
-async def upload_file(file: UploadFile = File(...)):
-    ext = Path(file.filename).suffix.lower()
-    if ext not in ALLOWED_EXTENSIONS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Định dạng không hỗ trợ. Chỉ chấp nhận: {', '.join(ALLOWED_EXTENSIONS)}"
-        )
-    # Giới hạn 20MB
-    content = await file.read()
-    if len(content) > 20 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="File quá lớn (tối đa 20MB)")
-
-    save_path = DATA_DIR / file.filename
-    save_path.write_bytes(content)
-
-    # Rebuild index
+async def upload_file(
+    background_tasks: BackgroundTasks, 
+    file: UploadFile = File(...)
+):
     try:
-        rebuild_index()
-        return {"success": True, "filename": file.filename, "message": "Upload và index thành công!"}
+        # Tạo thư mục data nếu chưa có
+        data_path = Path("data")
+        data_path.mkdir(exist_ok=True)
+        
+        file_path = data_path / file.filename
+        
+        # Lưu file xuống đĩa 
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            
+        #  yêu cầu FastAPI chạy nó ngầm (background)
+        background_tasks.add_task(rebuild_index)
+        
+        return {
+            "success": True, 
+            "message": f"File {file.filename} đã được tải lên thành công và đang được xử lý ngầm.",
+            "filename": file.filename
+        }
     except Exception as e:
-        save_path.unlink(missing_ok=True)
-        raise HTTPException(status_code=500, detail=f"Lỗi khi index: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/files")
 def list_files():
