@@ -24,7 +24,7 @@ load_dotenv()
 
 app = FastAPI(title="FPT RAG API", version="3.0.0")
 
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "https://fpt-student-rag.vercel.app").split(",")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
