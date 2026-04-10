@@ -3,8 +3,10 @@ import os
 import json
 import time
 import uuid
+import shutil
 from datetime import datetime
-from fastapi import FastAPI, HTTPException, Request, Depends
+from pathlib import Path
+from fastapi import FastAPI, HTTPException, Request, Depends, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, field_validator
@@ -14,25 +16,24 @@ from collections import defaultdict
 from agent import (
     query_engine,
     get_cached, set_cache,
-    rewrite_query, check_faq,
-    Settings
+    check_faq, Settings,
+    rebuild_index
 )
 
 load_dotenv()
 
-app = FastAPI(title="FPT RAG API", version="2.0.0")
+app = FastAPI(title="FPT RAG API", version="3.0.0")
 
-# ── CORS ──────────────────────────────────────────────────────
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["*"],
 )
 
-# ── Rate limiting (in-memory) ─────────────────────────────────
+# ── Rate limiting ─────────────────────────────────────────────
 _rate_store: dict = defaultdict(list)
 RATE_LIMIT = int(os.getenv("RATE_LIMIT_PER_MIN", "20"))
 
@@ -44,10 +45,9 @@ def rate_limit(request: Request):
         raise HTTPException(status_code=429, detail="Quá nhiều yêu cầu. Vui lòng chờ 1 phút.")
     _rate_store[ip].append(now)
 
-# ── Session store (in-memory) ─────────────────────────────────
-# { session_id: [ {role, content, ts}, ... ] }
+# ── Session store ─────────────────────────────────────────────
 _sessions: dict = defaultdict(list)
-SESSION_MAX = 20  # tối đa 20 lượt/session
+SESSION_MAX = 20
 
 # ── Schema ────────────────────────────────────────────────────
 class AskRequest(BaseModel):
@@ -57,13 +57,12 @@ class AskRequest(BaseModel):
     @field_validator("question")
     @classmethod
     def clean_question(cls, v):
+        import re
         v = v.strip()
         if not v:
             raise ValueError("Câu hỏi không được để trống")
         if len(v) > 500:
             raise ValueError("Câu hỏi quá dài (tối đa 500 ký tự)")
-        # strip sensitive patterns
-        import re
         v = re.sub(r'\b[\w.-]+@[\w.-]+\.\w+\b', '[email]', v)
         return v
 
@@ -73,11 +72,6 @@ def health():
     return {"status": "ok", "time": datetime.utcnow().isoformat()}
 
 # ── Session ───────────────────────────────────────────────────
-@app.get("/session/new")
-def new_session():
-    sid = str(uuid.uuid4())
-    return {"session_id": sid}
-
 @app.get("/session/{session_id}/history")
 def get_history(session_id: str):
     return {"history": _sessions.get(session_id, [])}
@@ -87,6 +81,59 @@ def clear_session(session_id: str):
     _sessions.pop(session_id, None)
     return {"cleared": True}
 
+# ── Upload file ───────────────────────────────────────────────
+ALLOWED_EXTENSIONS = {".pdf", ".docx", ".xlsx", ".txt", ".tex"}
+DATA_DIR = Path("data")
+DATA_DIR.mkdir(exist_ok=True)
+
+@app.post("/upload")
+async def upload_file(file: UploadFile = File(...)):
+    ext = Path(file.filename).suffix.lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Định dạng không hỗ trợ. Chỉ chấp nhận: {', '.join(ALLOWED_EXTENSIONS)}"
+        )
+    # Giới hạn 20MB
+    content = await file.read()
+    if len(content) > 20 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File quá lớn (tối đa 20MB)")
+
+    save_path = DATA_DIR / file.filename
+    save_path.write_bytes(content)
+
+    # Rebuild index
+    try:
+        rebuild_index()
+        return {"success": True, "filename": file.filename, "message": "Upload và index thành công!"}
+    except Exception as e:
+        save_path.unlink(missing_ok=True)
+        raise HTTPException(status_code=500, detail=f"Lỗi khi index: {str(e)}")
+
+@app.get("/files")
+def list_files():
+    files = []
+    for f in DATA_DIR.iterdir():
+        if f.suffix.lower() in ALLOWED_EXTENSIONS:
+            files.append({
+                "name": f.name,
+                "size": f.stat().st_size,
+                "ext": f.suffix.lower()
+            })
+    return {"files": files}
+
+@app.delete("/files/{filename}")
+def delete_file(filename: str):
+    f = DATA_DIR / filename
+    if not f.exists():
+        raise HTTPException(status_code=404, detail="File không tồn tại")
+    f.unlink()
+    try:
+        rebuild_index()
+    except Exception:
+        pass
+    return {"deleted": True}
+
 # ── Main streaming endpoint ───────────────────────────────────
 @app.post("/ask/stream")
 def ask_stream(req: AskRequest, _=Depends(rate_limit)):
@@ -94,10 +141,9 @@ def ask_stream(req: AskRequest, _=Depends(rate_limit)):
     session_id = req.session_id or str(uuid.uuid4())
 
     def generate():
-        # 1. Gửi session_id
         yield f"data: {json.dumps({'type': 'session', 'session_id': session_id})}\n\n"
 
-        # 2. Kiểm tra FAQ shortcuts (không tốn token)
+        # FAQ
         faq_answer = check_faq(question)
         if faq_answer:
             for token in faq_answer:
@@ -106,38 +152,33 @@ def ask_stream(req: AskRequest, _=Depends(rate_limit)):
             _append_session(session_id, question, faq_answer)
             return
 
-        # 3. Kiểm tra cache
+        # Cache
         cached = get_cached(question)
         if cached:
             for token in cached["answer"]:
                 yield f"data: {json.dumps({'type': 'token', 'text': token}, ensure_ascii=False)}\n\n"
-                time.sleep(0.005)  # fake stream cho UX
+                time.sleep(0.005)
             yield f"data: {json.dumps({'type': 'done', 'sources': cached['sources'], 'cached': True})}\n\n"
             _append_session(session_id, question, cached["answer"])
             return
 
-        # 4. Rewrite query để tăng retrieval accuracy
-        rewritten = question
-
-        # 5. Lấy source nodes
+        # Retrieval
         try:
-            source_nodes = query_engine.retriever.retrieve(rewritten)
+            source_nodes = query_engine.retriever.retrieve(question)
         except Exception:
             source_nodes = []
 
-        # 6. Stream LLM response
+        # Stream LLM
         full_answer = ""
         try:
-            streaming_resp = query_engine.query(rewritten)
+            streaming_resp = query_engine.query(question)
             for token in streaming_resp.response_gen:
                 full_answer += token
                 yield f"data: {json.dumps({'type': 'token', 'text': token}, ensure_ascii=False)}\n\n"
         except Exception as e:
-            err_msg = f"Đã xảy ra lỗi: {str(e)}"
-            yield f"data: {json.dumps({'type': 'error', 'text': err_msg})}\n\n"
+            yield f"data: {json.dumps({'type': 'error', 'text': str(e)})}\n\n"
             return
 
-        # 7. Gửi sources + done
         sources = []
         for node in source_nodes[:5]:
             file_name = node.metadata.get("file_name", "Tài liệu FAP")
@@ -146,7 +187,6 @@ def ask_stream(req: AskRequest, _=Depends(rate_limit)):
 
         yield f"data: {json.dumps({'type': 'done', 'sources': sources, 'cached': False}, ensure_ascii=False)}\n\n"
 
-        # 8. Lưu cache + session
         if full_answer:
             set_cache(question, full_answer, sources)
             _append_session(session_id, question, full_answer)
@@ -158,6 +198,5 @@ def _append_session(session_id: str, question: str, answer: str):
     history = _sessions[session_id]
     history.append({"role": "user", "content": question, "ts": time.time()})
     history.append({"role": "assistant", "content": answer, "ts": time.time()})
-    # giữ tối đa SESSION_MAX lượt
     if len(history) > SESSION_MAX * 2:
         _sessions[session_id] = history[-(SESSION_MAX * 2):]
