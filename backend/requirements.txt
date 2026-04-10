@@ -1,11 +1,10 @@
 fastapi==0.115.*
 uvicorn[standard]==0.32.*
 llama-index==0.12.*
-llama-index-embeddings-huggingface
+llama-index-embeddings-fastembed
 llama-index-llms-groq
 groq
 pypdf
 python-dotenv
 docx2txt
 openpyxl
-sentence-transformers

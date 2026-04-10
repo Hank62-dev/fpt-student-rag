@@ -7,15 +7,14 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from llama_index.core import load_index_from_storage, StorageContext, Settings
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from llama_index.embeddings.fastembed import FastEmbedEmbedding
 from llama_index.llms.groq import Groq
 from llama_index.core.prompts import PromptTemplate
 
 load_dotenv()
 
 # ── Embedding ──────────────────────────────────────────────────
-Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-small-en-v1.5")
-
+Settings.embed_model = FastEmbedEmbedding(model_name="BAAI/bge-small-en-v1.5")
 # ── LLM ───────────────────────────────────────────────────────
 Settings.llm = Groq(
     model=os.getenv("GROQ_MODEL", "llama-3.1-8b-instant"),
