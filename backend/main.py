@@ -117,10 +117,7 @@ def ask_stream(req: AskRequest, _=Depends(rate_limit)):
             return
 
         # 4. Rewrite query để tăng retrieval accuracy
-        try:
-            rewritten = rewrite_query(question)
-        except Exception:
-            rewritten = question
+        rewritten = question
 
         # 5. Lấy source nodes
         try:
