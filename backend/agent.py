@@ -19,7 +19,7 @@ Settings.embed_model = FastEmbedEmbedding(model_name="BAAI/bge-small-en-v1.5")
 Settings.llm = Groq(
     model=os.getenv("GROQ_MODEL", "llama-3.1-8b-instant"),
     api_key=os.getenv("GROQ_API_KEY"),
-    temperature=0.2,
+    temperature=1.0,
     max_tokens=1024,
 )
 
