@@ -1,0 +1,54 @@
+{
+  "2e10a169c6f6cf9f0563f4f544bfbcf6": {
+    "answer": "Để được hỗ trợ đổi mã trong danh sách chờ, bạn cần làm đơn tại mục \"Các loại đơn khác\".",
+    "sources": [
+      {
+        "file_name": "KeHoachHocTapSummer.pdf",
+        "score": 0.643
+      },
+      {
+        "file_name": "LichXuLyThuTucHocVu.pdf",
+        "score": 0.62
+      },
+      {
+        "file_name": "TB- Hướng dẫn học môn coursera.pdf",
+        "score": 0.602
+      },
+      {
+        "file_name": "20260408_NopHocPhiKySummer.pdf",
+        "score": 0.585
+      },
+      {
+        "file_name": "Thông-báo-học-3W_FA25.pdf",
+        "score": 0.582
+      }
+    ],
+    "ts": 1775804994.6778908
+  },
+  "3bef0a009a1330f6317f7866d51e719b": {
+    "answer": "Tôi không có thông tin cụ thể về hệ thống FAP của Đại học FPT. Tuy nhiên, dựa trên các tài liệu bạn cung cấp, tôi có thể giúp bạn viết lại câu hỏi gốc thành dạng rõ ràng và đầy đủ ngữ cảnh FAP như sau:\n\n\"Xin chào! Tôi là sinh viên Đại học FPT với mã sinh viên là vov. Tôi muốn biết lịch học của mình. Tôi có thể đăng nhập vào hệ thống FAP tại địa chỉ http://fap.fpt.edu.vn/ và xem thông tin của mình. Tuy nhiên, tôi muốn biết cách xem lịch học cụ thể. Tôi có thể tìm thấy thông tin này ở đâu?\"\n\nTuy nhiên, để trả lời câu hỏi của bạn một cách chính xác, tôi cần thêm thông tin về hệ thống FAP của Đại học FPT. Nếu bạn có thêm thông tin hoặc tài liệu về hệ thống FAP, tôi sẽ cố gắng giúp bạn tìm kiếm thông tin về lịch học của mình.",
+    "sources": [
+      {
+        "file_name": "Thông-báo-học-3W_FA25.pdf",
+        "score": 0.679
+      },
+      {
+        "file_name": "THÔNG BÁO ĐĂNG KÝ HỌC LẠI - HỌC ĐI CHẬM KỲ BỘ MÔN VOVINAM.pdf",
+        "score": 0.674
+      },
+      {
+        "file_name": "DangKyBlock3w.pdf",
+        "score": 0.674
+      },
+      {
+        "file_name": "KeHoachHocTapSummer.pdf",
+        "score": 0.666
+      },
+      {
+        "file_name": "THÔNG BÁO CẬP NHẬT KHUNG CHƯƠNG TRÌNH HỌC HỌC KỲ SPRING 2026.pdf",
+        "score": 0.664
+      }
+    ],
+    "ts": 1775805021.4333627
+  }
+}
