@@ -8,3 +8,4 @@ pypdf
 python-dotenv
 docx2txt
 openpyxl
+python-multipart
