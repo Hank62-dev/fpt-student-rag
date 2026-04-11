@@ -24,7 +24,7 @@ load_dotenv()
 
 app = FastAPI(title="FPT RAG API", version="3.0.0")
 
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "https://fpt-student-rag.vercel.app").split(",")
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
@@ -156,21 +156,26 @@ def ask_stream(req: AskRequest, _=Depends(rate_limit)):
             return
 
         # Cache
-        cached = get_cached(question)
-        if cached:
-            for token in cached["answer"]:
-                yield f"data: {json.dumps({'type': 'token', 'text': token}, ensure_ascii=False)}\n\n"
-                time.sleep(0.005)
-            yield f"data: {json.dumps({'type': 'done', 'sources': cached['sources'], 'cached': True})}\n\n"
-            _append_session(session_id, question, cached["answer"])
-            return
+        # cached = get_cached(question)
+        # if cached:
+        #     for token in cached["answer"]:
+        #         yield f"data: {json.dumps({'type': 'token', 'text': token}, ensure_ascii=False)}\n\n"
+        #         time.sleep(0.005)
+        #     yield f"data: {json.dumps({'type': 'done', 'sources': cached['sources'], 'cached': True})}\n\n"
+        #     _append_session(session_id, question, cached["answer"])
+        #     return
 
         # Retrieval
         try:
             source_nodes = query_engine.retriever.retrieve(question)
-        except Exception:
+            print(f"Retrieved {len(source_nodes)} nodes")  # ← thêm
+            for node in source_nodes:
+                print(f"  - {node.metadata.get('file_name')} score={node.score}")  # ← thêm
+        except Exception as e:
+            print(f"Retrieval error: {e}")  # ← thêm
             source_nodes = []
 
+        # Stream LLM
         # Stream LLM
         full_answer = ""
         try:
@@ -178,7 +183,10 @@ def ask_stream(req: AskRequest, _=Depends(rate_limit)):
             for token in streaming_resp.response_gen:
                 full_answer += token
                 yield f"data: {json.dumps({'type': 'token', 'text': token}, ensure_ascii=False)}\n\n"
+            print(f"Full answer: '{full_answer}'")  # ← thêm dòng này
+            print(f"Answer length: {len(full_answer)}")  # ← thêm dòng này
         except Exception as e:
+            print(f"LLM error: {e}")  # ← thêm dòng này
             yield f"data: {json.dumps({'type': 'error', 'text': str(e)})}\n\n"
             return
 
@@ -190,9 +198,9 @@ def ask_stream(req: AskRequest, _=Depends(rate_limit)):
 
         yield f"data: {json.dumps({'type': 'done', 'sources': sources, 'cached': False}, ensure_ascii=False)}\n\n"
 
-        if full_answer:
-            set_cache(question, full_answer, sources)
-            _append_session(session_id, question, full_answer)
+        # if full_answer:
+        #     set_cache(question, full_answer, sources)
+        #     _append_session(session_id, question, full_answer)
 
     return StreamingResponse(generate(), media_type="text/event-stream")
 

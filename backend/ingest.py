@@ -3,6 +3,7 @@ import os
 from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, Settings
 from llama_index.embeddings.fastembed import FastEmbedEmbedding
 from dotenv import load_dotenv
+from llama_index.embeddings.ollama import OllamaEmbedding
 
 load_dotenv()
 

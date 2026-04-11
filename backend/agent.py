@@ -13,15 +13,19 @@ from llama_index.core import (
 from llama_index.embeddings.fastembed import FastEmbedEmbedding
 from llama_index.llms.groq import Groq
 from llama_index.core.prompts import PromptTemplate
-
+from llama_index.llms.ollama import Ollama
+from llama_index.embeddings.ollama import OllamaEmbedding
+from llama_index.core.node_parser import SentenceSplitter
 load_dotenv()
 
 Settings.embed_model = FastEmbedEmbedding(model_name="BAAI/bge-small-en-v1.5")
+
+Settings.transformations = [SentenceSplitter(chunk_size=512, chunk_overlap=50)]
 Settings.llm = Groq(
-    model=os.getenv("GROQ_MODEL", "llama-3.1-8b-instant"),
+    model="llama-3.3-70b-versatile",
     api_key=os.getenv("GROQ_API_KEY"),
     temperature=0.9,
-    max_tokens=1024,
+    max_tokens=1024,  
 )
 
 SYSTEM_PROMPT = PromptTemplate(
@@ -42,21 +46,60 @@ def _build_query_engine(idx):
     )
 
 # Load index
-storage_context = StorageContext.from_defaults(persist_dir="indexes")
-index = load_index_from_storage(storage_context)
+if Path("indexes").exists() and any(Path("indexes").iterdir()):
+    storage_context = StorageContext.from_defaults(persist_dir="indexes")
+    index = load_index_from_storage(storage_context)
+else:
+    index = VectorStoreIndex.from_documents([])
+    index.storage_context.persist(persist_dir="indexes")
+
 query_engine = _build_query_engine(index)
 
 def rebuild_index():
-    """Rebuild index sau khi upload file mới"""
     global index, query_engine
-    docs = SimpleDirectoryReader(
-        "data",
-        required_exts=[".pdf", ".docx", ".xlsx", ".txt", ".tex"],
-        recursive=True,
-    ).load_data()
-    index = VectorStoreIndex.from_documents(docs, show_progress=False)
-    index.storage_context.persist(persist_dir="indexes")
+    
+    if Path("indexes").exists() and any(Path("indexes").iterdir()):
+        storage_context = StorageContext.from_defaults(persist_dir="indexes")
+        index = load_index_from_storage(storage_context)
+    else:
+        index = VectorStoreIndex.from_documents([])
+
+    indexed_files = set()
+    for doc_id, doc_info in index.docstore.docs.items():
+        fname = (
+            doc_info.metadata.get("file_name") or
+            doc_info.metadata.get("filename") or
+            doc_info.metadata.get("source") or ""
+        )
+        if fname:
+            indexed_files.add(Path(fname).name)
+
+    print(f"Files đã index: {indexed_files}")
+    
+    new_docs = []
+    for f in Path("data").iterdir():
+        if f.suffix.lower() in {".pdf", ".docx", ".txt", ".tex"}:
+            if f.name not in indexed_files:
+                print(f"Loading file mới: {f.name}")
+                docs = SimpleDirectoryReader(input_files=[str(f)]).load_data()
+                new_docs.extend(docs)
+        elif f.suffix.lower() == ".xlsx":
+            if f.name not in indexed_files:
+                print(f"Loading Excel: {f.name}")
+                docs = load_excel(str(f))
+                print(f"Loaded {len(docs)} sheets từ {f.name}")
+                new_docs.extend(docs)
+
+    print(f"Tổng new_docs: {len(new_docs)}")
+    
+    if new_docs:
+        for doc in new_docs:
+            index.insert(doc)
+        index.storage_context.persist(persist_dir="indexes")
+
+    # Luôn update query_engine dù có file mới hay không
     query_engine = _build_query_engine(index)
+    print(f"Query engine rebuilt! Tổng docs: {len(index.docstore.docs)}")
 
 # ── Cache ─────────────────────────────────────────────────────
 CACHE_FILE = Path("cache.json")
@@ -101,3 +144,25 @@ def check_faq(question: str):
         if keyword in q_lower:
             return answer
     return None
+
+import pandas as pd
+from llama_index.core import Document
+
+def load_excel(file_path: str) -> list:
+    """Đọc Excel giữ nguyên cấu trúc bảng"""
+    docs = []
+    xl = pd.ExcelFile(file_path)
+    
+    for sheet_name in xl.sheet_names:
+        df = pd.read_excel(file_path, sheet_name=sheet_name)
+        
+        # Chuyển bảng thành text có cấu trúc
+        text = f"Sheet: {sheet_name}\n\n"
+        text += df.to_markdown(index=False)
+        
+        docs.append(Document(
+            text=text,
+            metadata={"file_name": Path(file_path).name, "sheet": sheet_name}
+        ))
+    
+    return docs

@@ -2,7 +2,9 @@ fastapi==0.115.*
 uvicorn[standard]==0.32.*
 llama-index==0.12.*
 llama-index-embeddings-fastembed
+llama-index-embeddings-ollama
 llama-index-llms-groq
+llama-index-llms-ollama
 groq
 pypdf
 python-dotenv
